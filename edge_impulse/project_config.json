@@ -1,0 +1,6 @@
+{
+  "project": "edge-ai-imu-denoiser",
+  "platform": "esp32",
+  "input": "imu",
+  "notes": "Placeholder Edge Impulse project config"
+}

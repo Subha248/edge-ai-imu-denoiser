@@ -1,0 +1,21 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# VSCode
+.vscode/
+
+# Arduino build artifacts
+build/
+*.elf
+*.bin
+
+# Python
+__pycache__/
+
+# Models
+*.tflite
+
+# Data
+datasets/raw/*.csv
+datasets/processed/*.csv

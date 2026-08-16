@@ -1,29 +1,44 @@
 # Edge AI IMU Denoiser
 
-This project builds a compact edge-AI pipeline for denoising inertial measurement unit (IMU) data on an ESP32. The workflow starts with sensor discovery, moves to raw IMU data capture, and eventually targets an on-device inference model that can filter noise in real time.
+Lightweight repository for collecting, denoising, and running a TinyML model on IMU data from an MPU6050/ESP32 platform.
 
-## Project goals
-- Discover and validate the MPU6050 sensor over I2C.
-- Read raw accelerometer and gyroscope data from the ESP32.
-- Collect data samples for training and testing.
-- Deploy a lightweight AI model for edge inference.
+## Project layout
 
-## Repository structure
-- firmware/: Arduino sketches for each development stage
-- docs/: architecture notes and block diagrams descriptions
-- datasets/: collected motion samples in CSV form
-- models/: trained or placeholder model artifacts
+edge-ai-imu-denoiser/
+- README.md (this file)
+- LICENSE
+- docs/
+	- system_architecture.md
+	- hardware_setup.md
+	- imu_data_acquisition.md
+	- performance_metrics.md
+- firmware/
+	- v1_i2c_scanner/
+	- v2_imu_ema_logger/
+	- v3_csv_logger/
+	- v4_edge_impulse_inference/
+- datasets/
+	- raw/imu_raw.csv
+	- processed/imu_denoised.csv
+- results/
+	- plots/
+	- metrics.txt
+- edge_impulse/
+	- project_config.json
+- models/
+	- denoiser_model.tflite
 
-## Development roadmap
-1. Sensor scan and wiring validation
-2. Raw IMU data logging
-3. CSV dataset collection
-4. TinyML model deployment and inference
+## Quick start
 
-## Getting started
-1. Open the Arduino sketch in the desired firmware folder.
-2. Upload it to an ESP32 board.
-3. Monitor Serial output for sensor readings or logging status.
+- Open the appropriate Arduino sketch under `firmware/` for your workflow stage.
+- Use the Serial Monitor at 115200 baud to view logs and CSV output.
+- Collected CSVs go into `datasets/raw/` and are processed into `datasets/processed/`.
+- Use the `models/denoiser_model.tflite` for inference workflows.
 
-## Notes
-The current repository contains the initial skeleton and working firmware examples for the first two milestones. The later stages are included as placeholders for the CSV logger and Edge Impulse deployment flow.
+## Contribution
+
+Create issues or PRs for additional firmware stages, dataset formats, or model improvements.
+
+## Contact
+
+Project maintained by the repository owner.
