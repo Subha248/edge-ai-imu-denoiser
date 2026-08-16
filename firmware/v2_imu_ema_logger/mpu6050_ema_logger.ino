@@ -1,43 +1,110 @@
-// Simple MPU6050 reader with exponential moving average (EMA) smoothing
 #include <Wire.h>
 
-const int MPU_ADDR = 0x68;
-float alpha = 0.1; // EMA coefficient
-float ax_prev=0, ay_prev=0, az_prev=0;
+struct IMU_Data {
+    int16_t rawX;
+    int16_t rawY;
+    int16_t rawZ;
+};
+
+const float ACCEL_SCALE = 16384.0;
+const float GYRO_SCALE  = 131.0;
+const float GRAVITY     = 9.81;
+
+// EMA Low-Pass Filter Alpha
+const float ALPHA = 0.2;
+float filt_ax = 0.0, filt_ay = 0.0, filt_az = 9.81;
+float filt_gx = 0.0, filt_gy = 0.0, filt_gz = 0.0;
+
+volatile bool measurementReady = false;
+
+void IRAM_ATTR timerISR() {
+    measurementReady = true;
+}
 
 void setup() {
-  Serial.begin(115200);
-  Wire.begin();
-  Wire.beginTransmission(MPU_ADDR);
-  Wire.write(0x6B);
-  Wire.write(0);
-  Wire.endTransmission(true);
-  delay(100);
-  Serial.println("ts,ax,ay,az,gx,gy,gz");
+    Serial.begin(115200);
+    delay(500);
+
+    Wire.begin(21, 22);
+
+    // Handshake
+    Wire.beginTransmission(0x68);
+    Wire.write(0x75);
+    Wire.endTransmission(false);
+    Wire.requestFrom(0x68, 1);
+    if (Wire.read() != 0x68) {
+        while (1) { delay(100); }
+    }
+
+    // Wake Up
+    Wire.beginTransmission(0x68);
+    Wire.write(0x6B);
+    Wire.write(0x00);
+    Wire.endTransmission();
+
+    // Hardware DLPF 21 Hz
+    Wire.beginTransmission(0x68);
+    Wire.write(0x1A);
+    Wire.write(0x04);
+    Wire.endTransmission();
+
+    // Ranges: Accel +-2g, Gyro +-250 deg/s
+    Wire.beginTransmission(0x68);
+    Wire.write(0x1C);
+    Wire.write(0x00);
+    Wire.endTransmission();
+
+    Wire.beginTransmission(0x68);
+    Wire.write(0x1B);
+    Wire.write(0x00);
+    Wire.endTransmission();
+
+    // ESP32 Core 3.x Timer (100 Hz / 10ms)
+    hw_timer_t *timer = timerBegin(1000000);
+    timerAttachInterrupt(timer, &timerISR);
+    timerAlarm(timer, 10000, true, 0);
 }
 
 void loop() {
-  Wire.beginTransmission(MPU_ADDR);
-  Wire.write(0x3B);
-  Wire.endTransmission(false);
-  Wire.requestFrom(MPU_ADDR, 14, true);
-  int16_t raw_ax = Wire.read()<<8 | Wire.read();
-  int16_t raw_ay = Wire.read()<<8 | Wire.read();
-  int16_t raw_az = Wire.read()<<8 | Wire.read();
-  int16_t raw_gx = Wire.read()<<8 | Wire.read();
-  int16_t raw_gy = Wire.read()<<8 | Wire.read();
-  int16_t raw_gz = Wire.read()<<8 | Wire.read();
+    if (measurementReady) {
+        measurementReady = false;
 
-  float ax = raw_ax / 16384.0;
-  float ay = raw_ay / 16384.0;
-  float az = raw_az / 16384.0;
+        Wire.beginTransmission(0x68);
+        Wire.write(0x3B);
+        Wire.endTransmission(false);
+        Wire.requestFrom(0x68, 14);
 
-  // EMA smoothing
-  ax_prev = alpha * ax + (1 - alpha) * ax_prev;
-  ay_prev = alpha * ay + (1 - alpha) * ay_prev;
-  az_prev = alpha * az + (1 - alpha) * az_prev;
+        IMU_Data accel, gyro;
+        accel.rawX = (Wire.read() << 8) | Wire.read();
+        accel.rawY = (Wire.read() << 8) | Wire.read();
+        accel.rawZ = (Wire.read() << 8) | Wire.read();
+        int16_t tempRaw = (Wire.read() << 8) | Wire.read();
+        gyro.rawX  = (Wire.read() << 8) | Wire.read();
+        gyro.rawY  = (Wire.read() << 8) | Wire.read();
+        gyro.rawZ  = (Wire.read() << 8) | Wire.read();
 
-  unsigned long ts = millis();
-  Serial.printf("%lu,%.6f,%.6f,%.6f,%d,%d,%d\n", ts, ax_prev, ay_prev, az_prev, raw_gx, raw_gy, raw_gz);
-  delay(10);
+        // Convert to physical units (m/s^2 and deg/s)
+        float raw_ax = (accel.rawX / ACCEL_SCALE) * GRAVITY;
+        float raw_ay = (accel.rawY / ACCEL_SCALE) * GRAVITY;
+        float raw_az = (accel.rawZ / ACCEL_SCALE) * GRAVITY;
+        float raw_gx = gyro.rawX / GYRO_SCALE;
+        float raw_gy = gyro.rawY / GYRO_SCALE;
+        float raw_gz = gyro.rawZ / GYRO_SCALE;
+
+        // Software EMA LPF
+        filt_ax = (ALPHA * raw_ax) + ((1.0 - ALPHA) * filt_ax);
+        filt_ay = (ALPHA * raw_ay) + ((1.0 - ALPHA) * filt_ay);
+        filt_az = (ALPHA * raw_az) + ((1.0 - ALPHA) * filt_az);
+        filt_gx = (ALPHA * raw_gx) + ((1.0 - ALPHA) * filt_gx);
+        filt_gy = (ALPHA * raw_gy) + ((1.0 - ALPHA) * filt_gy);
+        filt_gz = (ALPHA * raw_gz) + ((1.0 - ALPHA) * filt_gz);
+
+        // CSV Output
+        Serial.print(filt_ax, 4); Serial.print(",");
+        Serial.print(filt_ay, 4); Serial.print(",");
+        Serial.print(filt_az, 4); Serial.print(",");
+        Serial.print(filt_gx, 4); Serial.print(",");
+        Serial.print(filt_gy, 4); Serial.print(",");
+        Serial.println(filt_gz, 4);
+    }
 }
