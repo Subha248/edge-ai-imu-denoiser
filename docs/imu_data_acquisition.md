@@ -210,7 +210,19 @@ ax,ay,az,gx,gy,gz
 `ax, ay, az, gx, gy, gz`
 
 ---
+## Dataset Summary
 
+* **Total rows:** 3,403
+* **Actual samples:** 3,402
+* **Sampling rate:** 100 Hz
+* **Duration:** 34.02 seconds
+* **Data:** 6-axis IMU (`ax, ay, az, gx, gy, gz`)
+* **Purpose:** Used as time-series data for **TinyML/Edge AI denoising**.
+
+### Why this is enough
+
+**3,402 samples** provide sufficient data to start training and testing the denoising model, especially for a prototype.
+---
 # 6. Edge Impulse CSV Wizard Setup
 
 | Step                      | Setting                      | Purpose                           |
