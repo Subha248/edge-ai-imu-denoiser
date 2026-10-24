@@ -17,7 +17,9 @@ edge-ai-imu-denoiser/
 └── README.md
 ```
 
-Existing CSV datasets are kept in `datasets/`.
+Existing CSV datasets are kept unchanged in `datasets/`. The real Edge Impulse
+JSON recordings are also available as `datasets/motion_real.json` and
+`datasets/idle_real.json`. Each contains six IMU channels sampled every 10 ms.
 
 ## Firmware setup
 
