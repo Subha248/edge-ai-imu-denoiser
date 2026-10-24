@@ -1,4 +1,0 @@
-SNR_improvement_db: 3.2
-RMSE: 0.012
-inference_latency_ms: 12
-model_size_bytes: 123456
