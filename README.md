@@ -1,35 +1,14 @@
-# Edge AI IMU Denoiser
-
-ESP32 firmware for MPU6050 IMU sampling, Edge Impulse inference, and a live
-denoising dashboard.
-
-## Project layout
-
-```text
-edge-ai-imu-denoiser/
+ESP32 Edge AI IMU DenoiserA real-time signal cleaning system running directly on an ESP32 microcontroller. It uses an on-device TinyML neural network to detect whether an MPU-6050 sensor is still or moving, dynamically adjusting its noise filtering to eliminate jitter without adding lag.Includes a self-hosted live web dashboard that plots raw vs. cleaned data over Wi-Fi at 25 FPS without needing an internet connection.The Problem & The IdeaLow-cost IMUs like the MPU-6050 are prone to electrical noise and micro-vibrations:When sitting still: Readings jump around due to noise, causing drift when calculating tilt or velocity.When in motion: A heavy filter smooths out the noise, but adds noticeable delay (lag) during quick turns or movements.Instead of sticking to one filter setting, this project uses a tiny machine learning model trained on real sensor recordings to constantly check the device's physical state:Idle State: The system applies aggressive filtering ($\alpha = 0.02$) to lock flat lines and eliminate baseline noise.Motion State: The system relaxes filtering ($\alpha = 0.08$) to keep tracking responsive and lag-free.How It WorksSensor Sampling: Reads acceleration ($A_x, A_y, A_z$) and angular velocity ($G_x, G_y, G_z$) over I2C at 50 Hz.Feature Extraction: A sliding 100 ms window computes statistical features and FFT spectral bins (78 inputs total).Neural Network: An INT8-quantized model trained with Edge Impulse processes the features every 100 ms (~1 ms inference time).Adaptive Filter: The motion probability smoothly shifts the filter weight between idle and motion mode.Web Dashboard: The ESP32 hosts its own Wi-Fi network and streams dual real-time traces (Raw Red vs. Denoised Green) to any connected phone or browser.Tech Stack & HardwareMCU: ESP32 Dev Module (240 MHz dual-core)Sensor: MPU-6050 6-Axis IMU (I2C @ 400 kHz)Framework: Arduino / PlatformIOTinyML: Edge Impulse C++ SDK (quantized INT8 model)Web Interface: ESPAsyncWebServer & WebSockets running directly on the chipHardware WiringMPU-6050 PinESP32 PinVCC3.3VGNDGNDSDAGPIO 21SCLGPIO 22Repository StructurePlaintextedge-ai-imu-denoiser/
 ├── firmware/
 │   ├── lib/
-│   │   └── subhapradha24-project-1_inferencing/
+│   │   └── subhapradha24-project-1_inferencing/   # Unzipped Edge Impulse model library
 │   ├── src/
-│   │   └── main.cpp
-│   └── platformio.ini
+│   │   └── main.cpp                               # Main application & web UI code
+│   └── platformio.ini                             # Build flags & dependencies
 ├── datasets/
+│   ├── idle_real.json                             # Recorded stationary calibration data
+│   └── motion_real.json                           # Recorded dynamic movement data
 └── README.md
-```
-
-Existing CSV datasets are kept unchanged in `datasets/`. The real Edge Impulse
-JSON recordings are also available as `datasets/motion_real.json` and
-`datasets/idle_real.json`. Each contains six IMU channels sampled every 10 ms.
-
-## Firmware setup
-
-1. Extract the Edge Impulse Arduino library into
-   `firmware/lib/subhapradha24-project-1_inferencing/`. The library is not
-   included in this repository yet; the placeholder directory is intentional.
-2. Open `firmware/` in PlatformIO and build for the `esp32dev` environment.
-3. Connect an MPU6050 to the ESP32 using SDA pin 21 and SCL pin 22.
-4. Flash the firmware, connect to the `IMU_AI_NETWORK` Wi-Fi access point
-   (password `12345678`), and open `http://192.168.4.1`.
-
-The firmware uses AsyncTCP and ESPAsyncWebServer, which PlatformIO fetches from
-the dependencies listed in `firmware/platformio.ini`.
+How to Build & Run1. Build the CodeOpen this repository in VS Code with the PlatformIO extension installed.Extract your exported Edge Impulse model folder into:Plaintextfirmware/lib/subhapradha24-project-1_inferencing/
+Connect your ESP32 via USB and click Upload.2. View the Live DashboardOn your phone or laptop, look for the Wi-Fi network:Network Name (SSID): IMU_AI_NETWORKPassword: 12345678Open any browser and go to:Plaintexthttp://192.168.4.1
+The dark-mode dashboard will load immediately, plotting live raw vs. denoised waveforms across all 6 axes alongside the active AI classification state.
